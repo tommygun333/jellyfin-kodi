@@ -357,6 +357,12 @@ class Player(xbmc.Player):
 
         if settings("mediaSegmentsEnabled.bool"):
             self.check_skip_segments(item, item["CurrentPosition"])
+        if settings("mediaSegmentsEnabled.bool"):
+            try:
+                live_pos = int(self.getTime())  # <-- use live time here
+            except Exception:
+                live_pos = item["CurrentPosition"]
+            self.check_skip_segments(item, live_pos)  # <-- pass live time, not cached
 
         if not report:
             previous = item["CurrentPosition"]
