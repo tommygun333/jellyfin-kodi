@@ -342,25 +342,24 @@ class Player(xbmc.Player):
                     pass
 
     def report_playback(self, report=True):
-    current_file = self.get_playing_file()
+        """Report playback progress to jellyfin server.
+        Check if the user seek.
+        """
+        current_file = self.get_playing_file()
 
-    if not self.is_playing_file(current_file):
-        return
+        if not self.is_playing_file(current_file):
+            return
 
-    item = self.get_file_info(current_file)
+        item = self.get_file_info(current_file)
 
-    if window("jellyfin.external.bool"):
-        return
+        if window("jellyfin.external.bool"):
+            return
 
-    if settings("mediaSegmentsEnabled.bool"):
-        try:
-            live_pos = int(self.getTime())  # <-- use live time here
-        except Exception:
-            live_pos = item["CurrentPosition"]
-        self.check_skip_segments(item, live_pos)  # <-- pass live time, not cached
+        if settings("mediaSegmentsEnabled.bool"):
+            self.check_skip_segments(item, item["CurrentPosition"])
 
-    if not report:
-        previous = item["CurrentPosition"]
+        if not report:
+            previous = item["CurrentPosition"]
 
             try:
                 item["CurrentPosition"] = int(self.getTime())
