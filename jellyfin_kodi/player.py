@@ -3,6 +3,7 @@ from __future__ import division, absolute_import, print_function, unicode_litera
 
 #################################################################################################
 
+import math
 import os
 
 import xbmc
@@ -342,6 +343,17 @@ class Player(xbmc.Player):
             if play_url:
                 next_info["play_url"] = play_url
                 LOG.info("--[ next up / native mode ] play_url=%s", play_url)
+
+        # Tell service.upnext to show the popup immediately at the segment boundary.
+        # Without this, service.upnext falls back to its configured default notification
+        # time (e.g. 30s before end) and the monitor loop keeps waiting — by which point
+        # the Preview/Outro segment boundary has long since passed and the popup never fires.
+        try:
+            remaining = int(math.ceil(self.getTotalTime() - self.getTime()))
+            next_info["notification_time"] = max(remaining, 1)
+            LOG.info("--[ next up ] notification_time=%d (remaining at segment boundary)", max(remaining, 1))
+        except Exception as e:
+            LOG.warning("--[ next up ] could not determine remaining time: %s", e)
 
         LOG.info("--[ next up ] %s", next_info)
         event("upnext_data", next_info, hexlify=True)
