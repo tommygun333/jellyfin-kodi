@@ -303,6 +303,16 @@ class Player(xbmc.Player):
             "next_episode": data,
         }
 
+        # In native/direct path mode, include the file path so service.upnext
+        # can play the next episode directly via Player.Open instead of going
+        # through the Jellyfin addon plugin (plugin://plugin.video.jellyfin).
+        # This is faster and more reliable when Kodi has direct filesystem access.
+        if item.get("PlayMethod") == "DirectPlay":
+            play_url = next_item.get("Path")
+            if play_url:
+                next_info["play_url"] = play_url
+                LOG.info("--[ next up / native mode ] play_url=%s", play_url)
+
         LOG.info("--[ next up ] %s", next_info)
         event("upnext_data", next_info, hexlify=True)
 
