@@ -634,10 +634,47 @@ class Player(xbmc.Player):
         if not segments:
             return
 
+        early_seconds = int(settings("upnextEarlySeconds") or 0)
+
         for segment_type, segment in segments.items():
             skip_mode = self._get_segment_skip_mode(segment_type)
             if skip_mode == 0:  # Off
                 continue
+
+            # Early Up Next trigger: fire next_up() N seconds before segment start
+            # for Play Next mode (mode 3) on Preview and Credits segments.
+            if early_seconds > 0 and skip_mode == 3 and segment_type in ("Preview", "Credits"):
+                start = segment.get("Start")
+                end = segment.get("End")
+                if start is not None and end is not None and end > start:
+                    trigger_pos = start - early_seconds
+                    early_key = "%s:%s:early" % (item_id, segment_type)
+                    LOG.debug(
+                        "Skip check (early): segment_type=%s, early_seconds=%d, trigger_pos=%.1f, current_pos=%.1f",
+                        segment_type,
+                        early_seconds,
+                        trigger_pos,
+                        current_position,
+                    )
+                    if trigger_pos <= current_position < start and early_key not in self.skip_prompted and trigger_pos > 0:
+                        # Credits: skip early trigger if a Preview segment exists (defer to Preview)
+                        if segment_type == "Credits" and "Preview" in segments:
+                            LOG.debug(
+                                "Skip check (early): Credits early trigger skipped, Preview exists"
+                            )
+                        else:
+                            segment_key = "%s:%s" % (item_id, segment_type)
+                            self.skip_prompted.add(early_key)
+                            self.skip_prompted.add(segment_key)
+                            LOG.info(
+                                "Skip check (early): Firing early Up Next for %s, early_seconds=%d, trigger_pos=%.1f",
+                                segment_type,
+                                early_seconds,
+                                trigger_pos,
+                            )
+                            self.up_next = True
+                            self.next_up()
+                            continue
 
             bounds = self._process_segment(
                 item_id, segment_type, segment, current_position, skip_mode

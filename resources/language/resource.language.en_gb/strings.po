@@ -1241,3 +1241,7 @@ msgctxt "#33262"
 msgid "Play next episode"
 msgstr "Play next episode"
 
+msgctxt "#33263"
+msgid "Up Next early notification (seconds)"
+msgstr "Up Next early notification (seconds)"
+
