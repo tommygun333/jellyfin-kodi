@@ -387,9 +387,11 @@ class Player(xbmc.Player):
                 played = 0
 
             if played > 2.0 and not self.up_next:
-
-                self.up_next = True
-                self.next_up()
+                preview_mode = int(settings("skipPreviewMode") or 0)
+                credits_mode = int(settings("skipCreditsMode") or 0)
+                if preview_mode != 3 and credits_mode != 3:
+                    self.up_next = True
+                    self.next_up()
 
             if (item["CurrentPosition"] - previous) < 30:
                 return
@@ -758,39 +760,5 @@ class Player(xbmc.Player):
         self._play_next_episode()
 
     def _play_next_episode(self):
-        """Find and immediately play the next episode using JSONRPC Player.Open."""
-        try:
-            current_file = self.get_playing_file()
-            item = self.get_file_info(current_file)
-            if not item:
-                return
-            if item["Type"] != "Episode" or not item.get("CurrentEpisode"):
-                LOG.info("_play_next_episode: Not an episode or missing CurrentEpisode, skipping")
-                return
-
-            next_items = item["Server"].jellyfin.get_adjacent_episodes(
-                item["CurrentEpisode"]["tvshowid"], item["Id"]
-            )
-
-            next_item = None
-            for index, ep in enumerate(next_items["Items"]):
-                if ep["Id"] == item["Id"]:
-                    try:
-                        next_item = next_items["Items"][index + 1]
-                    except IndexError:
-                        LOG.warning("_play_next_episode: No next episode found")
-                        return
-                    break
-
-            if not next_item:
-                LOG.warning("_play_next_episode: Could not determine next episode")
-                return
-
-            LOG.info("_play_next_episode: Playing next episode %s", next_item["Id"])
-            play_url = "plugin://plugin.video.jellyfin/?mode=play&id=%s&server=%s" % (
-                next_item["Id"],
-                item["ServerId"],
-            )
-            JSONRPC("Player.Open").execute({"item": {"file": play_url}})
-        except Exception as e:
-            LOG.error("_play_next_episode error: %s", e, exc_info=True)
+        """Trigger the Up Next popup via service.upnext at the segment boundary."""
+        self.next_up()
