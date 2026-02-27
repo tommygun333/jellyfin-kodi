@@ -261,11 +261,41 @@ class Player(xbmc.Player):
         item = self.get_file_info(self.get_playing_file())
         objects = Objects()
 
-        if item["Type"] != "Episode" or not item.get("CurrentEpisode"):
+        if item["Type"] != "Episode":
             return
 
+        current_episode = item.get("CurrentEpisode")
+
+        # In native/direct path mode, CurrentEpisode is never populated because
+        # the addon's listitem builder (actions.py) is bypassed. Fall back to
+        # fetching the current item's metadata directly from the Jellyfin server.
+        if not current_episode:
+            LOG.info("next_up: CurrentEpisode missing (native mode), fetching from server")
+            try:
+                current_item = item["Server"].jellyfin.get_item(item["Id"])
+                if not current_item:
+                    LOG.warning("next_up: could not fetch current item from server")
+                    return
+                server_address = item["Server"].auth.get_server_info(
+                    item["Server"].auth.server_id
+                )["address"]
+                current_api = api.API(current_item, server_address)
+                current_episode = objects.map(current_item, "UpNext")
+                current_artwork = current_api.get_all_artwork(
+                    objects.map(current_item, "ArtworkParent"), True
+                )
+                current_episode["art"] = {
+                    "tvshow.poster": current_artwork.get("Series.Primary"),
+                    "tvshow.fanart": current_artwork["Backdrop"][0] if current_artwork.get("Backdrop") else None,
+                    "thumb": current_artwork.get("Primary"),
+                }
+                item["CurrentEpisode"] = current_episode
+            except Exception as e:
+                LOG.exception("next_up: failed to build CurrentEpisode for native mode: %s" % e)
+                return
+
         next_items = item["Server"].jellyfin.get_adjacent_episodes(
-            item["CurrentEpisode"]["tvshowid"], item["Id"]
+            current_episode["tvshowid"], item["Id"]
         )
 
         for index, next_item in enumerate(next_items["Items"]):
@@ -299,7 +329,7 @@ class Player(xbmc.Player):
                 "ServerId": item["ServerId"],
                 "PlayCommand": "PlayNow",
             },
-            "current_episode": item["CurrentEpisode"],
+            "current_episode": current_episode,
             "next_episode": data,
         }
 
