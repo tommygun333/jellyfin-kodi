@@ -607,8 +607,9 @@ class Player(xbmc.Player):
             )
 
             if segment_type == "Credits" and not self.up_next:
-                self.up_next = True
-                self.next_up()
+                if skip_mode != 3:
+                    self.up_next = True
+                    self.next_up()
 
             self._handle_skip_segment(segment_type, start, end, skip_mode)
             break
@@ -651,6 +652,9 @@ class Player(xbmc.Player):
 
         elif mode == 2:  # Show skip button
             self._show_skip_button(segment_type, end - start, end)
+
+        elif mode == 3:  # Play Next
+            self._handle_play_next(segment_type)
 
     def _show_skip_button(self, segment_type, duration, end_time):
         LOG.debug(
@@ -728,3 +732,65 @@ class Player(xbmc.Player):
             except Exception:
                 pass
             self.skip_dialog = None
+
+    def _handle_play_next(self, segment_type):
+        """Handle 'Play Next' mode: play the next episode when segment is reached."""
+        try:
+            current_file = self.get_playing_file()
+            item = self.get_file_info(current_file)
+            if not item:
+                return
+            item_id = item["Id"]
+        except Exception:
+            return
+
+        segments = self.skip_segments.get(item_id, {})
+
+        # For Credits: only play next if there's no Preview segment
+        if segment_type == "Credits":
+            if "Preview" in segments:
+                LOG.debug("_handle_play_next: Credits triggered but Preview exists, deferring to Preview")
+                return
+
+        LOG.info("_handle_play_next: Triggering next episode for segment_type=%s", segment_type)
+        if not self.up_next:
+            self.up_next = True
+        self._play_next_episode()
+
+    def _play_next_episode(self):
+        """Find and immediately play the next episode using JSONRPC Player.Open."""
+        try:
+            current_file = self.get_playing_file()
+            item = self.get_file_info(current_file)
+            if not item:
+                return
+            if item["Type"] != "Episode" or not item.get("CurrentEpisode"):
+                LOG.info("_play_next_episode: Not an episode or missing CurrentEpisode, skipping")
+                return
+
+            next_items = item["Server"].jellyfin.get_adjacent_episodes(
+                item["CurrentEpisode"]["tvshowid"], item["Id"]
+            )
+
+            next_item = None
+            for index, ep in enumerate(next_items["Items"]):
+                if ep["Id"] == item["Id"]:
+                    try:
+                        next_item = next_items["Items"][index + 1]
+                    except IndexError:
+                        LOG.warning("_play_next_episode: No next episode found")
+                        return
+                    break
+
+            if not next_item:
+                LOG.warning("_play_next_episode: Could not determine next episode")
+                return
+
+            LOG.info("_play_next_episode: Playing next episode %s", next_item["Id"])
+            play_url = "plugin://plugin.video.jellyfin/?mode=play&id=%s&server=%s" % (
+                next_item["Id"],
+                item["ServerId"],
+            )
+            JSONRPC("Player.Open").execute({"item": {"file": play_url}})
+        except Exception as e:
+            LOG.error("_play_next_episode error: %s", e, exc_info=True)

@@ -1237,3 +1237,7 @@ msgctxt "#33261"
 msgid "Off"
 msgstr "Off"
 
+msgctxt "#33262"
+msgid "Play next episode"
+msgstr "Play next episode"
+
