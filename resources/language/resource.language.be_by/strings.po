@@ -1,7 +1,7 @@
 msgid ""
 msgstr ""
-"PO-Revision-Date: 2026-02-16 13:40+0000\n"
-"Last-Translator: Dzmitry Zubialevich <dzmitry.zubialevich@gmail.com>\n"
+"PO-Revision-Date: 2026-02-28 01:35+0000\n"
+"Last-Translator: Pavel Miniutka <pavel.miniutka@gmail.com>\n"
 "Language-Team: Belarusian <https://translate.jellyfin.org/projects/jellyfin/"
 "jellyfin-kodi/be/>\n"
 "Language: be_by\n"
@@ -58,7 +58,7 @@ msgstr "Адрас сервера"
 
 msgctxt "#30001"
 msgid "Server name"
-msgstr "Імя сервера"
+msgstr "Назва сервера"
 
 msgctxt "#30002"
 msgid "Force HTTP playback"
@@ -274,7 +274,7 @@ msgstr "Праверце злучэнне"
 
 msgctxt "#30504"
 msgid "Use alternate device name"
-msgstr "Выкарыстоўвайце альтэрнатыўнае імя прылады"
+msgstr "Выкарыстоўваць альтэрнатыўную назву прылады"
 
 msgctxt "#30506"
 msgid "Sync"
@@ -583,7 +583,7 @@ msgstr "Скід базы даных завершаны, Kodi перазапус
 
 msgctxt "#33089"
 msgid "Enter folder name for backup"
-msgstr "Увядзіце імя папкі для рэзервовага капіявання"
+msgstr "Увядзіце назву папкі для рэзервовага капіявання"
 
 msgctxt "#33090"
 msgid "Replace existing backup?"
