@@ -1245,3 +1245,7 @@ msgctxt "#33263"
 msgid "Up Next early notification (seconds)"
 msgstr "Up Next early notification (seconds)"
 
+msgctxt "#33264"
+msgid "Skip button display time (seconds)"
+msgstr "Skip button display time (seconds)"
+
