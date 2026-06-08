@@ -38,14 +38,14 @@ class Player(xbmc.Player):
     def get_playing_file(self):
         try:
             return self.getPlayingFile()
-        except Exception as error:
-            LOG.exception(error)
+        except Exception:
+            return None
 
     def get_file_info(self, file):
         try:
             return self.played[file]
-        except Exception as error:
-            LOG.exception(error)
+        except Exception:
+            return None
 
     def is_playing_file(self, file):
         return file in self.played
@@ -414,8 +414,6 @@ class Player(xbmc.Player):
         if window("jellyfin.external.bool"):
             return
 
-        if settings("mediaSegmentsEnabled.bool"):
-            self.check_skip_segments(item, item["CurrentPosition"])
         if settings("mediaSegmentsEnabled.bool"):
             try:
                 live_pos = int(self.getTime())  # <-- use live time here
