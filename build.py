@@ -32,10 +32,16 @@ def indent(elem: ET.Element, level: int = 0) -> None:
 
 def create_addon_xml(config: dict, source: str, py_version: str) -> None:
     """
-    Create addon.xml from template file
+    Create addon.xml from template file.
+    Silently skipped when .build/template.xml is not present (local builds).
     """
+    template_path = "{}/.build/template.xml".format(source)
+    if not os.path.exists(template_path):
+        print("[build] .build/template.xml not found — skipping addon.xml generation, using existing file.")
+        return
+
     # Load template file
-    with open("{}/.build/template.xml".format(source), "r") as f:
+    with open(template_path, "r") as f:
         tree = ET.parse(f)
         root = tree.getroot()
 
@@ -70,7 +76,7 @@ def zip_files(py_version: str, source: str, target: str, dev: bool) -> None:
     archive_name = "plugin.video.jellyfin+{}.zip".format(py_version)
 
     with zipfile.ZipFile("{}/{}".format(target, archive_name), "w") as z:
-        for root, dirs, files in os.walk(args.source):
+        for root, dirs, files in os.walk(source):
             for filename in filter(file_filter, files):
                 file_path = os.path.join(root, filename)
                 if dev or folder_filter(file_path):

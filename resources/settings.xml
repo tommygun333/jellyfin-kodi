@@ -535,6 +535,23 @@
 						<popup>false</popup>
 					</control>
 				</setting>
+				<setting id="skipButtonDisplayTime" type="integer" label="33264" help="" parent="mediaSegmentsEnabled">
+					<level>0</level>
+					<default>7</default>
+					<constraints>
+						<minimum>3</minimum>
+						<step>1</step>
+						<maximum>30</maximum>
+					</constraints>
+					<dependencies>
+						<dependency type="visible">
+							<condition operator="is" setting="mediaSegmentsEnabled">true</condition>
+						</dependency>
+					</dependencies>
+					<control type="slider" format="integer">
+						<popup>false</popup>
+					</control>
+				</setting>
 			</group>
 		</category>
 		<category id="interface" label="30235" help="">

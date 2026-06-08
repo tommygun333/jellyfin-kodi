@@ -807,13 +807,13 @@ class Player(xbmc.Player):
             end_time,
         )
         try:
+            import threading
             import xbmcaddon
             from .dialogs.skip import SkipDialog
 
             self._reset_skip_dialog()
 
             addon_path = xbmcaddon.Addon("plugin.video.jellyfin").getAddonInfo("path")
-            LOG.debug("_show_skip_button: addon_path=%s", addon_path)
 
             self.skip_dialog = SkipDialog(
                 "script-jellyfin-skip.xml",
@@ -821,42 +821,48 @@ class Player(xbmc.Player):
                 "default",
                 "1080i",
             )
-            self.skip_dialog.set_skip_info(segment_type, duration)
-            LOG.debug("_show_skip_button: calling show()")
+            self.skip_dialog.set_skip_info(segment_type)
             self.skip_dialog.show()
             LOG.debug("_show_skip_button: show() completed")
 
+            # Auto-dismiss after configured display time
+            try:
+                display_time = max(3, min(30, int(settings("skipButtonDisplayTime") or 7)))
+            except Exception:
+                display_time = 7
+            dismiss_timer = threading.Timer(display_time, self._close_skip_dialog)
+            dismiss_timer.daemon = True
+            dismiss_timer.start()
+
             self._skip_end_time = end_time
             self._monitor_skip_dialog()
+            dismiss_timer.cancel()
         except Exception as e:
             LOG.error("_show_skip_button error: %s", e, exc_info=True)
+
+    def _close_skip_dialog(self):
+        """Close the skip dialog (called from auto-dismiss timer thread)."""
+        if self.skip_dialog:
+            try:
+                self.skip_dialog.close()
+            except Exception:
+                pass
 
     def _monitor_skip_dialog(self):
         """Monitor the skip dialog and handle user input or timeout."""
         LOG.debug("_monitor_skip_dialog: starting, end_time=%.1f", self._skip_end_time)
         monitor = xbmc.Monitor()
 
-        # Monitor loop - check for user input or end of segment
         while self.skip_dialog and not monitor.abortRequested():
-            # Check if user clicked skip
             if self.skip_dialog.is_skip():
                 self.seekTime(self._skip_end_time)
                 LOG.info("User skipped to %.1f", self._skip_end_time)
                 break
 
-            # Check if user cancelled
-            if self.skip_dialog.is_cancel():
-                LOG.debug("User cancelled skip dialog")
-                break
-
-            # Check if we've passed the segment end time
+            # Close when we've passed the segment end time
             try:
-                current_pos = self.getTime()
-                if current_pos >= self._skip_end_time:
-                    LOG.debug(
-                        "_monitor_skip_dialog: passed end_time %.1f, closing",
-                        self._skip_end_time,
-                    )
+                if self.getTime() >= self._skip_end_time:
+                    LOG.debug("_monitor_skip_dialog: passed end_time %.1f, closing", self._skip_end_time)
                     break
             except Exception:
                 break
