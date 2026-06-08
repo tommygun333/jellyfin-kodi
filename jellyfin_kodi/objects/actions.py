@@ -930,7 +930,7 @@ def on_play(data, server):
             try:
                 file = player.getPlayingFile()
             except Exception as error:
-                LOG.exception(error)
+                LOG.debug("on_play: not playing: %s", error)
 
                 return
 
