@@ -67,6 +67,7 @@ class Library(threading.Thread):
         self.writer_threads = {"updated": [], "userdata": [], "removed": []}
         self.database_lock = threading.Lock()
         self.music_database_lock = threading.Lock()
+        self.deferred_library_update = False
 
         threading.Thread.__init__(self)
 
@@ -141,6 +142,13 @@ class Library(threading.Thread):
         Start new "daemon threads" to process library updates.
         (actual daemon thread is not supported in Kodi)
         """
+        if self.deferred_library_update and not self.player.isPlayingVideo():
+            self.deferred_library_update = False
+            LOG.info("--[ deferred library update — dispatching ]")
+            xbmc.executebuiltin("UpdateLibrary(video)")
+            if xbmc.getCondVisibility("Window.IsMedia"):
+                xbmc.executebuiltin("Container.Refresh")
+
         self.download_threads = [
             thread for thread in self.download_threads if not thread.is_done
         ]
@@ -247,13 +255,17 @@ class Library(threading.Thread):
             ):  # Prevent cursor from moving
                 xbmc.executebuiltin("Container.Refresh")
             else:  # Update widgets
-                xbmc.executebuiltin("UpdateLibrary(video)")
-
-                if xbmc.getCondVisibility("Window.IsMedia"):
-                    xbmc.executebuiltin("Container.Refresh")
+                if not self.player.isPlayingVideo():
+                    xbmc.executebuiltin("UpdateLibrary(video)")
+                    if xbmc.getCondVisibility("Window.IsMedia"):
+                        xbmc.executebuiltin("Container.Refresh")
+                else:
+                    LOG.info("--[ deferred library update — video playing ]")
+                    self.deferred_library_update = True
 
     def stop_client(self):
         self.stop_thread = True
+        self.deferred_library_update = False
 
     def enable_pending_refresh(self):
         """When there's an active thread. Let the main thread know."""
