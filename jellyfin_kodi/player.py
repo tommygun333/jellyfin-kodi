@@ -5,6 +5,7 @@ from __future__ import division, absolute_import, print_function, unicode_litera
 
 import math
 import os
+import time
 
 import xbmc
 import xbmcvfs
@@ -55,6 +56,7 @@ class Player(xbmc.Player):
         Accounts for scenario where Kodi starts playback and exits immediately.
         First, ensure previous playback terminated correctly in Jellyfin.
         """
+        LOG.info("-->[ onPlayBackStarted ENTRY ] file=%s ts=%.3f", self.get_playing_file(), time.monotonic())
 
         self.stop_playback()
         self._reset_state(restart=True)
@@ -82,6 +84,18 @@ class Player(xbmc.Player):
                 return
 
         items = window("jellyfin_play.json")
+        LOG.info("-->[ onPlayBackStarted ] jellyfin_play items_found=%s file=%s", bool(items), current_file)
+
+        # For native/library plays, jellyfin_play.json is never set — it is only
+        # populated for plugin:// addon-mode plays. Waiting here blocks the Kodi
+        # Python callback queue and delays onAVStarted for ALL other addons by up
+        # to 40 seconds. Native play reporting is handled via the Player.OnPlay
+        # monitor notification in objects/actions.py:on_play(), so we can safely
+        # return here without losing any reporting.
+        if not items and not current_file.startswith("plugin://"):
+            LOG.info("-->[ onPlayBackStarted ] native play detected, skipping wait loop — reporting via Player.OnPlay")
+            return
+
         item = None
 
         while not items:
@@ -93,7 +107,7 @@ class Player(xbmc.Player):
             count += 1
 
             if count == 20:
-                LOG.info("Could not find jellyfin prop...")
+                LOG.info("-->[ onPlayBackStarted ] timed out waiting for jellyfin_play after 40s, file=%s", current_file)
 
                 return
 
@@ -141,6 +155,8 @@ class Player(xbmc.Player):
 
         if monitor.waitForAbort(2):
             return
+
+        LOG.info("-->[ onPlayBackStarted EXIT ] file=%s ts=%.3f", current_file, time.monotonic())
 
         if item["PlayOption"] == "Addon":
             self.set_audio_subs(item["AudioStreamIndex"], item["SubtitleStreamIndex"])
